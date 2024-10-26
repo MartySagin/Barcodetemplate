@@ -1,6 +1,5 @@
 package com.vsb.kru13.barcodetemplate;
 
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,42 +12,14 @@ import androidx.annotation.Nullable;
 
 public class BarcodeView extends View {
 
-    //UPC-A code
+    static final int[] L = {0x0D, 0x19, 0x13, 0x3D, 0x23, 0x31, 0x2F, 0x3B, 0x37, 0x0B};
+    static final int[] R = {0x72, 0x66, 0x6C, 0x42, 0x5C, 0x5E, 0x50, 0x44, 0x48, 0x74};
 
-    //http://en.wikipedia.org/wiki/EAN_code
-    //http://www.terryburton.co.uk/barcodewriter/generator/
+    static int BARCODE_WIDTH = 600;
+    static int BARCODE_HEIGHT = 200;
+    static final int BARCODE_LINE_WIDTH = 5;
 
-
-    static final int[] L = {0x0D,  //000 1101
-            0x19,  //001 1001
-            0x13,  //001 0011
-            0x3D,  //011 1101
-            0x23,  //010 0011
-            0x31,  //011 0001
-            0x2F,  //010 1111
-            0x3B,  //011 1011
-            0x37,  //011 0111
-            0x0B   //000 1011
-    };
-
-    static final int[] R = {0x72, //111 0010
-            0x66, //110 0110
-            0x6C, //110 1100
-            0x42, //100 0010
-            0x5C, //101 1100
-            0x5E, //100 1110
-            0x50, //101 0000
-            0x44, //100 0100
-            0x48, //100 1000
-            0x74  //111 0100
-    };
-
-    final static int BARCODE_WIDTH =  600;
-    final static int BARCODE_HEIGHT = 200;
-    final static int BARCODE_LINE_WIDTH = 5;
-
-    // čísla čárového kódu
-    int code[] = new int[12];
+    int[] code = new int[12];
 
     public BarcodeView(Context context) {
         super(context);
@@ -60,35 +31,27 @@ public class BarcodeView extends View {
         setDefaults();
     }
 
-    public BarcodeView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        setDefaults();
-    }
-
-    public BarcodeView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
-        setDefaults();
-    }
-
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-    }
-
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        // při změně velikosti view,  w a h obsahují novou velikost
-    }
-
-    // nastaví výchozí hodnoty
     void setDefaults() {
-        int copyFrom[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
+        int[] copyFrom = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2};
         System.arraycopy(copyFrom, 0, code, 0, copyFrom.length);
     }
 
-    public void setCode(int[] code) {
-        this.code = code;
+    public void setCodeWithCheckDigit(int[] codeWithoutCheckDigit) {
+        System.arraycopy(codeWithoutCheckDigit, 0, code, 0, 11);
+        code[11] = calculateCheckDigit(codeWithoutCheckDigit);
+    }
+
+    private int calculateCheckDigit(int[] codeWithoutCheckDigit) {
+        int oddSum = 0, evenSum = 0;
+        for (int i = 0; i < codeWithoutCheckDigit.length; i++) {
+            if (i % 2 == 0) {
+                oddSum += codeWithoutCheckDigit[i];
+            } else {
+                evenSum += codeWithoutCheckDigit[i];
+            }
+        }
+        int total = (oddSum * 3) + evenSum;
+        return (10 - (total % 10)) % 10;
     }
 
     @Override
@@ -106,53 +69,52 @@ public class BarcodeView extends View {
         textPaint.setTextSize(30);
         textPaint.setAntiAlias(true);
 
-        // Vykresli bílý obdelník pro pozadí čárového kódu
-        canvas.drawRect(new Rect(0, 0, BARCODE_WIDTH, BARCODE_HEIGHT), whitePaint);
+        // Dynamická velikost podle aktuální velikosti View
+        BARCODE_WIDTH = getWidth();
+        BARCODE_HEIGHT = getHeight() / 2;
 
-        // Tloušťka čáry čárového kódu
+        // Vypočítá pozici pro vykreslení čárového kódu uprostřed
+        int xStart = (getWidth() - BARCODE_WIDTH) / 2;
+        int yStart = (getHeight() - BARCODE_HEIGHT) / 2;
+
+        // Vykreslení pozadí čárového kódu
+        canvas.drawRect(new Rect(xStart, yStart, xStart + BARCODE_WIDTH, yStart + BARCODE_HEIGHT), whitePaint);
+
         blackPaint.setStrokeWidth(BARCODE_LINE_WIDTH);
 
-        int x = 20; // Počáteční pozice pro vykreslení čárového kódu
-        int yTop = 50; // Horní pozice čar čárového kódu
-        int yBottom = BARCODE_HEIGHT; // Dolní pozice čar čárového kódu
+        // Dynamické nastavení x, aby bylo centrované podle šířky kódu
+        int codeWidth = (BARCODE_LINE_WIDTH * 7 * 12); // celková šířka čárového kódu
+        int x = xStart + (BARCODE_WIDTH - codeWidth) / 2; // dynamicky posune x na střed
 
-        // Kresli levou stranu čárového kódu (L)
+        int yTop = yStart + 50;
+        int yBottom = yStart + BARCODE_HEIGHT;
+
+        // Kreslení levé části čárového kódu (L)
         for (int i = 0; i < 6; i++) {
             int value = code[i];
             int pattern = L[value];
 
             for (int bit = 6; bit >= 0; bit--) {
                 if ((pattern >> bit & 1) == 1) {
-                    // Kresli černou čáru
                     canvas.drawLine(x, yTop, x, yBottom, blackPaint);
                 }
                 x += BARCODE_LINE_WIDTH;
             }
-            // Kresli číslice pod čárovým kódem
-            canvas.drawText(String.valueOf(value), x - (BARCODE_LINE_WIDTH * 7), BARCODE_HEIGHT + 40, textPaint);
+            canvas.drawText(String.valueOf(value), x - (BARCODE_LINE_WIDTH * 7), yBottom + 40, textPaint);
         }
 
-        // Kresli pravou stranu čárového kódu (R)
+        // Kreslení pravé části čárového kódu (R)
         for (int i = 6; i < 12; i++) {
             int value = code[i];
             int pattern = R[value];
 
             for (int bit = 6; bit >= 0; bit--) {
                 if ((pattern >> bit & 1) == 1) {
-                    // Kresli černou čáru
                     canvas.drawLine(x, yTop, x, yBottom, blackPaint);
                 }
                 x += BARCODE_LINE_WIDTH;
             }
-            // Kresli číslice pod čárovým kódem
-            canvas.drawText(String.valueOf(value), x - (BARCODE_LINE_WIDTH * 7), BARCODE_HEIGHT + 40, textPaint);
+            canvas.drawText(String.valueOf(value), x - (BARCODE_LINE_WIDTH * 7), yBottom + 40, textPaint);
         }
     }
-
-
-
-
-
-
 }
-
