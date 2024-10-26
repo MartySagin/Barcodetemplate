@@ -19,13 +19,23 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp" />
 
+    <Button
+        android:id="@+id/buttonGenerateBarcode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Náhodně Generovat"
+        app:layout_constraintTop_toBottomOf="@id/inputBarcode"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
     <!-- Tlačítko pro vykreslení čárového kódu -->
     <Button
         android:id="@+id/buttonDrawBarcode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Vykreslit čárový kód"
-        app:layout_constraintTop_toBottomOf="@id/inputBarcode"
+        app:layout_constraintTop_toBottomOf="@id/buttonGenerateBarcode"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp" />
